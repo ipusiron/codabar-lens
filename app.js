@@ -2,7 +2,7 @@
   'use strict';
   const nw7 = globalThis.PostMirrorNW7;
   const messages = globalThis.CodabarLensMessages;
-  const state = { language: initialLanguage(), tab: new URL(location.href).hash === '#learn' ? 'learn' : 'photo' };
+  const state = { language: initialLanguage(), tab: new URL(location.href).hash === '#learn' ? 'learn' : 'decode' };
   const element = id => document.getElementById(id);
   const translate = (key, params = {}) => messages[state.language][key].replace(/\{(\w+)\}/g, (_, name) => String(params[name]));
 
@@ -15,6 +15,185 @@
     } catch (_) { /* The browser may block storage. */ }
     return navigator.language.toLowerCase().startsWith('ja') ? 'ja' : 'en';
   }
+
+  const lesson = globalThis.CodabarLensLesson;
+  const tabNames = ['decode', 'lab', 'photo', 'learn', 'quiz'];
+  const training = { sample: 0, character: 0, sampleFrame: null, sampleRead: null,
+    labSample: 0, effect: 'none', labFrame: null, labRead: null, answers: Array(7).fill(null), checked: false };
+
+  function make(tag, text, className) {
+    const item = document.createElement(tag);
+    if (text !== undefined) item.textContent = text;
+    if (className) item.className = className;
+    return item;
+  }
+
+  function fillSelect(id, options, selected) {
+    const select = element(id);
+    select.replaceChildren(...options.map(([value, label]) => {
+      const option = make('option', label);
+      option.value = String(value);
+      return option;
+    }));
+    select.value = String(selected);
+  }
+
+  function paintFrame(id, frame, selected) {
+    const canvas = element(id), { image } = frame;
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d');
+    context.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
+    if (selected !== undefined) {
+      const character = frame.described.characters[selected];
+      context.strokeStyle = '#0a58a8';
+      context.lineWidth = 2;
+      context.strokeRect(40 + character.start * 3 - 2, 12, (character.end - character.start) * 3 + 4, 96);
+    }
+  }
+
+  function computeSample() {
+    training.sampleFrame = lesson.render(lesson.samples[training.sample].raw);
+    training.sampleRead = nw7.read(training.sampleFrame.image, training.sampleFrame.region);
+  }
+
+  function computeLab() {
+    training.labFrame = lesson.render(lesson.samples[training.labSample].raw, training.effect);
+    training.labRead = nw7.read(training.labFrame.image, training.labFrame.region);
+  }
+
+  function sampleOptions() {
+    return lesson.samples.map((sample, index) => [index, translate('sample.' + sample.id) + ': ' + sample.raw]);
+  }
+
+  function renderSample() {
+    if (!training.sampleFrame) computeSample();
+    const sample = lesson.samples[training.sample], result = training.sampleRead;
+    fillSelect('sample-select', sampleOptions(), training.sample);
+    paintFrame('sample-canvas', training.sampleFrame, training.character);
+    element('sample-canvas').setAttribute('aria-label', translate('sample.image', { raw: sample.raw }));
+    element('sample-value').textContent = result.status === 'read' ? result.text : translate('lab.status.unreadable');
+    element('sample-value').dataset.status = result.status;
+    element('sample-guards').textContent = result.status === 'read'
+      ? translate('nw7.guards', result) : '';
+    const characters = training.sampleFrame.described.characters;
+    const role = index => index === 0 ? 'start' : index === characters.length - 1 ? 'stop' : 'content';
+    fillSelect('sample-character', characters.map((c, index) => [index,
+      translate('sample.characterOption', { position: index + 1, symbol: c.symbol, role: translate('sample.' + role(index)) })]),
+    training.character);
+    const c = characters[training.character];
+    element('sample-character-title').textContent = translate('sample.characterTitle', {
+      position: training.character + 1, total: characters.length, symbol: c.symbol
+    });
+    const canvas = element('sample-character-canvas');
+    canvas.width = (c.end - c.start) * 12 + 24;
+    canvas.height = 120;
+    canvas.setAttribute('aria-label', translate('sample.characterImage', { symbol: c.symbol }));
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#000';
+    let x = 12;
+    c.widths.forEach((width, index) => {
+      if (index % 2 === 0) context.fillRect(x, 20, width * 12, 80);
+      x += width * 12;
+    });
+    element('sample-elements').replaceChildren(...c.widths.map((width, index) => {
+      const li = make('li');
+      li.append(make('span', translate(index % 2 === 0 ? 'sample.bar' : 'sample.space', { n: Math.floor(index / 2) + 1 })),
+        make('strong', translate(width === 1 ? 'sample.narrow' : 'sample.wide')));
+      return li;
+    }));
+    element('sample-previous').disabled = training.character === 0;
+    element('sample-next').disabled = training.character === characters.length - 1;
+  }
+
+  function renderLab() {
+    if (!training.labFrame) computeLab();
+    fillSelect('experiment-sample', sampleOptions(), training.labSample);
+    fillSelect('experiment-effect', lesson.effects.map(effect => [effect, translate('experiment.effect.' + effect)]), training.effect);
+    paintFrame('experiment-canvas', training.labFrame);
+    const raw = lesson.samples[training.labSample].raw, result = training.labRead;
+    const status = result.status !== 'read' ? 'unreadable'
+      : result.start + result.text + result.stop === raw ? 'match' : 'mismatch';
+    element('experiment-canvas').setAttribute('aria-label', translate('experiment.image', {
+      raw, effect: translate('experiment.effect.' + training.effect)
+    }));
+    element('experiment-status').textContent = translate('experiment.status.' + status);
+    element('experiment-status').dataset.status = status;
+    element('experiment-expected').textContent = raw.slice(1, -1);
+    element('experiment-value').textContent = result.status === 'read' ? result.text : '';
+    element('experiment-read').hidden = result.status !== 'read';
+    element('experiment-guards').textContent = result.status === 'read' ? translate('nw7.guards', result) : '';
+    element('experiment-note').textContent = translate('experiment.note.' + training.effect);
+  }
+
+  function renderQuizFeedback() {
+    const graded = lesson.grade(training.answers);
+    element('quiz-score').textContent = training.checked ? translate('quiz.score', graded) : translate('quiz.notGraded');
+    element('quiz-score').dataset.graded = String(training.checked);
+    lesson.questions.forEach((q, index) => {
+      const feedback = element('quiz-feedback-' + q.id);
+      feedback.hidden = !training.checked;
+      feedback.replaceChildren();
+      if (training.checked) feedback.append(make('strong', translate('quiz.' + graded.statuses[index])),
+        make('p', translate('quiz.' + q.id + '.explanation')));
+    });
+  }
+
+  function renderQuiz() {
+    element('quiz-questions').replaceChildren(...lesson.questions.map((q, index) => {
+      const fieldset = make('fieldset');
+      fieldset.append(make('legend', `${index + 1}. ${translate('quiz.' + q.id + '.question')}`));
+      for (let choice = 0; choice < 3; choice++) {
+        const label = make('label', undefined, 'quiz-choice');
+        const input = make('input');
+        input.type = 'radio'; input.name = 'quiz-' + q.id; input.value = String(choice);
+        input.checked = training.answers[index] === choice;
+        input.addEventListener('change', () => {
+          training.answers[index] = choice;
+          training.checked = false;
+          renderQuizFeedback();
+        });
+        label.append(input, make('span', translate('quiz.' + q.id + '.choice.' + choice)));
+        fieldset.append(label);
+      }
+      const feedback = make('div', undefined, 'quiz-feedback');
+      feedback.id = 'quiz-feedback-' + q.id;
+      fieldset.append(feedback);
+      return fieldset;
+    }));
+    renderQuizFeedback();
+  }
+
+  function buildTraining() {
+    element('sample-select').addEventListener('change', event => {
+      training.sample = Number(event.target.value); training.character = 0;
+      computeSample(); renderSample();
+    });
+    element('sample-character').addEventListener('change', event => {
+      training.character = Number(event.target.value); renderSample();
+    });
+    for (const [id, offset] of [['sample-previous', -1], ['sample-next', 1]]) {
+      element(id).addEventListener('click', () => { training.character += offset; renderSample(); });
+    }
+    element('sample-open-lab').addEventListener('click', () => {
+      training.labSample = training.sample; training.effect = 'none'; computeLab(); renderLab(); showTab('lab', true);
+    });
+    element('experiment-sample').addEventListener('change', event => {
+      training.labSample = Number(event.target.value); computeLab(); renderLab();
+    });
+    element('experiment-effect').addEventListener('change', event => {
+      training.effect = event.target.value; computeLab(); renderLab();
+    });
+    element('experiment-reset').addEventListener('click', () => {
+      training.effect = 'none'; computeLab(); renderLab();
+    });
+    element('quiz-check').addEventListener('click', () => { training.checked = true; renderQuizFeedback(); });
+    element('quiz-reset').addEventListener('click', () => {
+      training.answers.fill(null); training.checked = false; renderQuiz();
+    });
+  }
+
 
   const photo = {
     version: 0, bitmap: null, pixels: null, region: null, crop: null, zoom: null,
@@ -267,9 +446,10 @@
   }
 
   function showTab(name, focus = false) {
+    if (!tabNames.includes(name)) return;
     if (state.tab === 'photo' && name !== 'photo') releasePhoto();
     state.tab = name;
-    for (const tab of ['photo', 'learn']) {
+    for (const tab of tabNames) {
       const selected = tab === name;
       element(`tab-${tab}`).setAttribute('aria-selected', String(selected));
       element(`tab-${tab}`).tabIndex = selected ? 0 : -1;
@@ -289,15 +469,21 @@
     element('lang-toggle').setAttribute('aria-label', translate('language.target'));
     element('lang-toggle').lang = state.language === 'ja' ? 'en' : 'ja';
     renderPhoto();
+    renderSample();
+    renderLab();
+    renderQuiz();
   }
 
-  for (const name of ['photo', 'learn']) {
+  for (const name of tabNames) {
     const tab = element(`tab-${name}`);
     tab.addEventListener('click', () => showTab(name));
     tab.addEventListener('keydown', event => {
       if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
       event.preventDefault();
-      showTab(event.key === 'Home' ? 'photo' : event.key === 'End' ? 'learn' : name === 'photo' ? 'learn' : 'photo', true);
+      const offset = event.key === 'ArrowLeft' ? -1 : 1;
+      const next = event.key === 'Home' ? tabNames[0] : event.key === 'End' ? tabNames.at(-1)
+        : tabNames[(tabNames.indexOf(name) + offset + tabNames.length) % tabNames.length];
+      showTab(next, true);
     });
   }
   element('nw7-open-photo').addEventListener('click', () => showTab('photo', true));
@@ -316,6 +502,7 @@
     }));
   });
   buildPhoto();
+  buildTraining();
   renderLanguage();
   showTab(state.tab);
 })();

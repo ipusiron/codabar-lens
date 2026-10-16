@@ -10,6 +10,7 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
   <script src="nw7-core.js" defer></script>
+  <script src="lesson-core.js" defer></script>
   <script src="messages.js" defer></script>
   <script src="app.js" defer></script>
 </head>
@@ -27,10 +28,63 @@
     <p data-i18n="related.description"></p>
     <a href="https://ipusiron.github.io/postmirror/" target="_blank" rel="noopener noreferrer" data-i18n="related.postmirror"></a>
     <div class="tabs" role="tablist" data-i18n-label="tabs.label">
-      <button id="tab-photo" type="button" role="tab" aria-selected="true" aria-controls="panel-photo" data-i18n="tab.photo"></button>
-      <button id="tab-learn" type="button" role="tab" aria-selected="false" aria-controls="panel-learn" tabindex="-1" data-i18n="tab.learn"></button>
+      <button id="tab-decode" type="button" role="tab" aria-selected="true" aria-controls="panel-decode" data-i18n="tab.decode"></button>
+      <button id="tab-lab" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="panel-lab" data-i18n="tab.lab"></button>
+      <button id="tab-photo" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="panel-photo" data-i18n="tab.photo"></button>
+      <button id="tab-learn" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="panel-learn" data-i18n="tab.learn"></button>
+      <button id="tab-quiz" type="button" role="tab" aria-selected="false" tabindex="-1" aria-controls="panel-quiz" data-i18n="tab.quiz"></button>
     </div>
-    <div id="panel-photo" role="tabpanel" aria-labelledby="tab-photo">
+    <div id="panel-decode" role="tabpanel" aria-labelledby="tab-decode">
+      <section aria-labelledby="sample-title">
+        <h2 id="sample-title" data-i18n="sample.title"></h2>
+        <p data-i18n="sample.intro"></p>
+        <label for="sample-select" data-i18n="sample.choose"></label>
+        <select id="sample-select"></select>
+        <figure class="training-image">
+          <canvas id="sample-canvas" role="img"></canvas>
+          <figcaption data-i18n="sample.highlight"></figcaption>
+        </figure>
+        <h3 data-i18n="nw7.resultTitle"></h3>
+        <p id="sample-value" class="barcode-value" dir="ltr"></p>
+        <p id="sample-guards"></p>
+        <label for="sample-character" data-i18n="sample.inspectCharacter"></label>
+        <select id="sample-character"></select>
+        <div class="actions">
+          <button id="sample-previous" type="button" data-i18n="sample.previous"></button>
+          <button id="sample-next" type="button" data-i18n="sample.next"></button>
+        </div>
+        <h3 id="sample-character-title" aria-live="polite"></h3>
+        <canvas id="sample-character-canvas" class="character-canvas" role="img"></canvas>
+        <ol id="sample-elements" class="element-widths"></ol>
+        <p data-i18n="sample.seven"></p>
+        <p class="muted" data-i18n="sample.model"></p>
+        <button id="sample-open-lab" type="button" data-i18n="sample.openLab"></button>
+      </section>
+    </div>
+    <div id="panel-lab" role="tabpanel" aria-labelledby="tab-lab" hidden>
+      <section aria-labelledby="experiment-title">
+        <h2 id="experiment-title" data-i18n="experiment.title"></h2>
+        <p data-i18n="experiment.intro"></p>
+        <label for="experiment-sample" data-i18n="sample.choose"></label>
+        <select id="experiment-sample"></select>
+        <label for="experiment-effect" data-i18n="experiment.choose"></label>
+        <select id="experiment-effect"></select>
+        <figure class="training-image"><canvas id="experiment-canvas" role="img"></canvas></figure>
+        <div aria-live="polite">
+          <h3 id="experiment-status"></h3>
+          <p data-i18n="experiment.expected"></p><p id="experiment-expected" class="barcode-value" dir="ltr"></p>
+          <div id="experiment-read">
+            <h3 data-i18n="nw7.resultTitle"></h3>
+            <p id="experiment-value" class="barcode-value" dir="ltr"></p>
+            <p id="experiment-guards"></p>
+          </div>
+          <p id="experiment-note"></p>
+        </div>
+        <p class="privacy" data-i18n="experiment.limit"></p>
+        <button id="experiment-reset" type="button" data-i18n="experiment.reset"></button>
+      </section>
+    </div>
+    <div id="panel-photo" role="tabpanel" aria-labelledby="tab-photo" hidden>
       <section aria-labelledby="photo-title">
         <h2 id="photo-title" data-i18n="photo.title"></h2>
         <p id="photo-own" data-i18n="photo.own"></p>
@@ -115,6 +169,18 @@
         <h3 data-i18n="nw7.learn.sourcesTitle"></h3>
         <p><a href="https://barcodeguide.seagullscientific.com/Content/Symbologies/Codabar.htm" target="_blank" rel="noopener noreferrer" data-i18n="nw7.learn.sourceStructure"></a></p>
         <p><a href="https://docs.strich.io/codabar.html" target="_blank" rel="noopener noreferrer" data-i18n="nw7.learn.sourceCheck"></a></p>
+      </section>
+    </div>
+    <div id="panel-quiz" role="tabpanel" aria-labelledby="tab-quiz" hidden>
+      <section aria-labelledby="quiz-title">
+        <h2 id="quiz-title" data-i18n="quiz.title"></h2>
+        <p data-i18n="quiz.intro"></p>
+        <div id="quiz-questions"></div>
+        <div class="actions">
+          <button id="quiz-check" type="button" data-i18n="quiz.check"></button>
+          <button id="quiz-reset" type="button" data-i18n="quiz.reset"></button>
+        </div>
+        <p id="quiz-score" aria-live="polite"></p>
       </section>
     </div>
     <p id="language-announcement" class="sr-only" aria-live="polite"></p>

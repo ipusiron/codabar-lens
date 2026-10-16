@@ -11,15 +11,15 @@ const messages = require('../messages.js');
 
 test('Extracted UI loads only the Codabar reader and local classic scripts', () => {
   const scripts = [...html.matchAll(/<script src="([^"]+)" defer><\/script>/g)].map(m => m[1]);
-  assert.deepEqual(scripts, ['nw7-core.js', 'messages.js', 'app.js']);
+  assert.deepEqual(scripts, ['nw7-core.js', 'lesson-core.js', 'messages.js', 'app.js']);
   assert.doesNotMatch(app, /PostMirrorCore|PostMirrorImage|decodeBars|addressNumber|postalCode/);
   assert.doesNotMatch(html, /type="module"|id="(?:barcode-mode|postal-result|address-result|photo-transfer)"/);
 });
 
-test('Image inspection and learning have unique accessible tab and panel pairs', () => {
+test('All five learning tabs have unique accessible tab and panel pairs', () => {
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map(m => m[1]);
   assert.equal(new Set(ids).size, ids.length);
-  for (const name of ['photo', 'learn']) {
+  for (const name of ['decode', 'lab', 'photo', 'learn', 'quiz']) {
     assert.match(html, new RegExp(`id="tab-${name}"[^>]+role="tab"[^>]+aria-controls="panel-${name}"`));
     assert.match(html, new RegExp(`id="panel-${name}"[^>]+role="tabpanel"[^>]+aria-labelledby="tab-${name}"`));
   }
@@ -67,8 +67,26 @@ test('External links are explicit and isolate the destination tab', () => {
 });
 
 test('Every static application message key is present in both languages', () => {
-  const pattern = /['"]((?:photo|nw7|lab|page|language)\.[\w.]+)['"]/g;
+  const pattern = /['"]((?:photo|nw7|lab|page|language|sample|experiment|quiz)\.[\w.]+)['"]/g;
   for (const [, key] of app.matchAll(pattern)) {
+    if (key.endsWith('.')) continue;
     for (const lang of ['ja', 'en']) assert.ok(messages[lang][key], key);
+  }
+});
+
+test('Every dynamic sample, experiment and quiz label is translated and answerable', () => {
+  const lesson = require('../lesson-core.js');
+  for (const language of ['ja', 'en']) {
+    const m = messages[language];
+    for (const sample of lesson.samples) assert.ok(m['sample.' + sample.id]);
+    for (const effect of lesson.effects) {
+      assert.ok(m['experiment.effect.' + effect]); assert.ok(m['experiment.note.' + effect]);
+    }
+    for (const q of lesson.questions) {
+      assert.ok(m['quiz.' + q.id + '.question']); assert.ok(m['quiz.' + q.id + '.explanation']);
+      const choices = [0, 1, 2].map(n => m['quiz.' + q.id + '.choice.' + n]);
+      assert.equal(new Set(choices).size, 3); assert.ok(choices.every(Boolean));
+      assert.ok(choices[q.correct]);
+    }
   }
 });
