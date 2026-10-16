@@ -174,7 +174,13 @@
       training.character = Number(event.target.value); renderSample();
     });
     for (const [id, offset] of [['sample-previous', -1], ['sample-next', 1]]) {
-      element(id).addEventListener('click', () => { training.character += offset; renderSample(); });
+      element(id).addEventListener('click', () => {
+        training.character += offset;
+        renderSample();
+        if (element(id).disabled) {
+          element(offset > 0 ? 'sample-previous' : 'sample-next').focus();
+        }
+      });
     }
     element('sample-open-lab').addEventListener('click', () => {
       training.labSample = training.sample; training.effect = 'none'; computeLab(); renderLab(); showTab('lab', true);
@@ -197,7 +203,7 @@
 
   const photo = {
     version: 0, bitmap: null, pixels: null, region: null, crop: null, zoom: null,
-    rough: [], precise: [], pitch: 0, step: 'empty', resized: false, read: null, decoded: null
+    rough: [], precise: [], span: 0, step: 'empty', resized: false, read: null, decoded: null
   };
   const photoCanvases = ['photo-overview', 'photo-zoom', 'photo-result'];
 
@@ -205,7 +211,7 @@
     photo.version++;
     if (photo.bitmap) photo.bitmap.close();
     Object.assign(photo, { bitmap: null, pixels: null, region: null, crop: null, zoom: null,
-      rough: [], precise: [], pitch: 0, step: 'empty', resized: false, read: null, decoded: null });
+      rough: [], precise: [], span: 0, step: 'empty', resized: false, read: null, decoded: null });
     for (const id of photoCanvases) {
       element(id).width = 0;
       element(id).height = 0;
@@ -330,8 +336,12 @@
 
   function showPhotoZoom() {
     const point = photo.rough[photo.precise.length];
-    photo.zoom = photoRect(point.x - 8 * photo.pitch, point.y - 4 * photo.pitch,
-      point.x + 8 * photo.pitch, point.y + 4 * photo.pitch);
+    // Codabar has a variable number of bars. Size the view from the selected
+    // span, with enough context to adjust endpoints on small images too.
+    const halfWidth = Math.max(24, photo.span / 8);
+    const halfHeight = Math.max(16, photo.span / 16);
+    photo.zoom = photoRect(point.x - halfWidth, point.y - halfHeight,
+      point.x + halfWidth, point.y + halfHeight);
     drawPhotoCrop(element('photo-zoom'), photo.zoom);
     photo.step = photo.precise.length ? 'right' : 'left';
     renderPhoto();
@@ -348,7 +358,9 @@
 
   function finishPhotoRegion() {
     const [start, end] = photo.precise;
-    const margin = Math.max(4 * photo.pitch, 32);
+    const length = Math.hypot(end.x - start.x, end.y - start.y);
+    // Retain the quiet zones scanned beyond the precise endpoints by nw7.read.
+    const margin = Math.max(length * 0.08, 32);
     photo.crop = photoRect(Math.min(start.x, end.x) - margin, Math.min(start.y, end.y) - margin,
       Math.max(start.x, end.x) + margin, Math.max(start.y, end.y) + margin);
     photo.region = { start: { x: start.x - photo.crop.x, y: start.y - photo.crop.y },
@@ -423,8 +435,8 @@
           element('photo-step').scrollIntoView({ block: 'nearest', behavior: 'auto' });
         }
         if (photo.rough.length === 2) {
-          photo.pitch = Math.hypot(photo.rough[1].x - photo.rough[0].x, photo.rough[1].y - photo.rough[0].y) / 66;
-          if (photo.pitch < 1) {
+          photo.span = Math.hypot(photo.rough[1].x - photo.rough[0].x, photo.rough[1].y - photo.rough[0].y);
+          if (photo.span <= 1) {
             resetPhotoRegion();
             element('photo-notice').textContent = translate('photo.retry');
           } else showPhotoZoom();
