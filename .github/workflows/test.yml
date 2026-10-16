@@ -22,6 +22,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check nw7-core.js
+          node --check lesson-core.js
           node --check messages.js
           node --check app.js
       - name: Run tests

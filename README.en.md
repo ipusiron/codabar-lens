@@ -18,6 +18,10 @@ Codabar Lens reads numbers and symbols from NW-7 (Codabar) photos locally. It ex
 
 ## 📸 Screenshot
 
+![Five tabs and sample decoding](assets/sample-en.png)
+
+*Start with a fictional sample and inspect each character’s widths.*
+
 ![Fictional Codabar reading](assets/screenshot-en.png)
 
 *Content and start/stop markers are shown separately. Only fictional data is used.*
@@ -28,7 +32,18 @@ Codabar Lens reads numbers and symbols from NW-7 (Codabar) photos locally. It ex
 - **Learn**: bar/space widths, character set, start/stop markers, optional check characters and reading limits
 - Japanese/English, light/dark themes and arrow/Home/End tab navigation
 
-This release moves the two existing NW-7 tabs. Sample-image experiments, manual decoding and quizzes are not implemented.
+Five tabs cover sample reading, image experiments, your photos, the underlying structure and a knowledge check.
+
+| Tab | Content |
+|---|---|
+| Sample decode | Read three fictional examples from images and inspect each character's four bars and three spaces |
+| Image lab | Apply five treatments to the same examples and compare the existing reader's output with the known answer |
+| Your image | Read content and start/stop markers from your own photo |
+| Learn | Understand the structure, uses, optional check character and reading limits |
+| Quiz | Seven questions with explanations, grading and reset |
+
+The three samples cover digits, different markers, and all six symbols. Treatments are no change, an upper cover, a thin central stripe, one erased character, and a full cover. Results apply only to this image and reader.
+Free-text barcode generation and manual decoding are not implemented.
 
 ## 🔄 Difference from PostMirror
 
@@ -43,6 +58,9 @@ Codabar is a general-purpose linear barcode used on shipping labels and in libra
 Use [PostMirror](https://ipusiron.github.io/postmirror/) for Japan Post customer barcodes.
 
 ## 📖 How to use
+
+Start with a fictional example in Sample decode. Use “Use this sample in Image lab” to compare treatments.
+For a personal photo, open Your image and follow these steps:
 
 1. Select a photo you are allowed to inspect.
 2. Tap the leftmost and rightmost bars in the full image.
@@ -97,11 +115,15 @@ codabar-lens/
 ├── app.js
 ├── messages.js
 ├── nw7-core.js
+├── lesson-core.js
 ├── assets/
 │   ├── screenshot.png
-│   └── screenshot-en.png
+│   ├── screenshot-en.png
+│   ├── sample.png
+│   └── sample-en.png
 └── test/
     ├── nw7.test.js
+    ├── lesson.test.js
     ├── nw7-vectors.json
     └── ui.test.js
 ```
@@ -110,6 +132,7 @@ codabar-lens/
 
 Current Chromium, Firefox and Safari-family browsers with JavaScript enabled. Supports `file://` and HTTP.
 For development, run `npm test` with Node.js 22 or later. No package installation is required.
+The 40 tests cover the existing reader, independent width vectors, three samples with five treatments, grading, translations and UI structure.
 
 ## 📄 License
 
