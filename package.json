@@ -1,0 +1,13 @@
+{
+  "name": "codabar-lens",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline NW-7 image inspection extracted from PostMirror",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT"
+}
