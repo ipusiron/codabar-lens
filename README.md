@@ -7,8 +7,8 @@ subtitle_ja: "NW-7の画像点検と仕組みの学習"
 subtitle_en: "Inspect and learn NW-7 barcodes"
 description_ja: "写真のNW-7（Codabar）を端末内で読み取り、番号と開始・終了記号を確かめるツール"
 description_en: "Read NW-7 (Codabar) photos locally and inspect their content and start/stop markers"
-category_ja: [プライバシー, 学習]
-category_en: [Privacy, Education]
+category_ja: [符号理論]
+category_en: [Coding Theory]
 difficulty: 2
 tags: [codabar, nw-7, barcode, privacy, offline]
 repo_url: "https://github.com/ipusiron/codabar-lens"
