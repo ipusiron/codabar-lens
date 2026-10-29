@@ -71,6 +71,14 @@ There are four taps in total. Use Back one step or Select the region again to co
 
 ## 🎯 Use cases
 
+Ways of using this tool in particular
+
+- Counting the pairs that turn into each other when read backwards (designing number tags and typefaces): turning a label upside down reverses the order of its bars. In Sample decode, look at the widths of each character in “Digits and all six symbols” (`C0123456789-$:/.+B`). Each of the 16 content characters becomes a different character when its widths are reversed. The eight pairs are 0 and 3, 1 and 8, 2 and 9, 4 and 7, 5 and 6, `-` and `$`, `:` and `/`, and `.` and `+`. Leaving out the start and stop markers, `123456` read backwards becomes `567098`, which is also a valid content string. Only the four start/stop characters A–D turn into a sequence that matches no character when reversed. The reader tries both directions and keeps only the one with A–D at both ends. You can see that A–D do the same job as the underline that tells 6 from 9 on numbered tags and balls.
+- Treating the decision as voting in a redundant system (safety design for machines and control): the reader draws seven parallel lines (scanlines) that read brightness along the selected region, and returns a result only when at least three of them read the same string and none reads a different one. It tolerates up to four unreadable lines, but even if six of the seven read the same string, one line reading a different string means no result. It is not a majority vote but a fail-safe design that prefers showing nothing to showing a wrong value. In Image lab, choosing “Digits” (`A123456A`) with the treatment “Draw a thin black line across the middle” blocks four of the seven lines, and the remaining three just meet the condition, so it reads. Blocking one more of those three makes it unreadable.
+- Comparing the character separators with asynchronous serial communication (electronics and serial links): NW-7 writes each character with seven elements, four bars and three spaces, and puts a separating gap between characters. The reader cuts out characters by counting seven elements at a time and leaves the separator out of the character. Widening every separator of `A123456A` to three times the narrow space, or alternating one and three times, still reads `123456`. This reader rejects a separator widened to five times (draw a barcode with wider separators to try it in Your image). You can see that it works like asynchronous (start-stop) serial communication such as UART, which takes a fixed number of bits after the start bit as one character and accepts any idle time between characters.
+
+General uses
+
 - Separate fictional `A123456A` into content `123456` and its two `A` markers.
 - Learn that different start/stop markers such as `A12B` are permitted.
 - Compare equal-height NW-7 bars with other formats such as JAN and Code 128.
@@ -125,6 +133,7 @@ codabar-lens/
     ├── nw7.test.js
     ├── lesson.test.js
     ├── nw7-vectors.json
+    ├── readme.test.js
     └── ui.test.js
 ```
 
@@ -132,7 +141,7 @@ codabar-lens/
 
 Current Chromium, Firefox and Safari-family browsers with JavaScript enabled. Supports `file://` and HTTP.
 For development, run `npm test` with Node.js 22 or later. No package installation is required.
-The 40 tests cover the existing reader, independent width vectors, three samples with five treatments, grading, translations and UI structure.
+The 44 tests cover the existing reader, independent width vectors, three samples with five treatments, grading, translations, UI structure and the numbers in the README use cases.
 
 ## 📄 License
 
