@@ -183,12 +183,27 @@ test('README: seven scanlines need three matching readings and no conflict; the 
   ]) assert.ok(own.en.includes(phrase), phrase);
 });
 
-test('README: wider or uneven separators still read 123456, and a fivefold separator is rejected', () => {
-  const own = ownUses();
-  // Same drawing as lesson.render, except that each separator can be widened by an integer factor.
-  function draw(raw, factor) {
+test('README: at the sample scale, wider or uneven separators read 123456 wherever the end bars are tapped, '
+  + 'and a fivefold separator is rejected', () => {
+  const own = ownUses(), raw = 'A123456A', reference = lesson.render(raw);
+  // Measure the narrow and wide widths of the sample image along the row it is read on.
+  const { width: sampleWidth } = reference.image, row = reference.region.start.y;
+  const dark = x => reference.image.data[(row * sampleWidth + x) * 4] < 128;
+  const columns = [...Array(sampleWidth).keys()].filter(dark);
+  const left = columns[0], right = columns.at(-1) + 1;
+  const elements = [];
+  for (let begin = left, x = left + 1; x <= right; x++) {
+    if (x === right || dark(x) !== dark(begin)) { elements.push(x - begin); begin = x; }
+  }
+  const [narrow, wide] = [...new Set(elements)].sort((a, b) => a - b);
+  assert.equal(new Set(elements).size, 2);
+  assert.equal(right - left, reference.described.units * narrow);
+  assert.deepEqual(elements, reference.described.runs.map(units => units * narrow));
+
+  // Same drawing as lesson.render at the measured scale, except that each separator can be widened by an integer factor.
+  function draw(factor) {
     const { runs } = lesson.describe(raw);
-    const scale = 3, margin = 40, height = 120;
+    const scale = narrow, margin = 40, height = 120;
     let gap = 0;
     const px = runs.map((units, i) => units * scale * (i % 8 === 7 ? factor(gap++) : 1));
     const width = px.reduce((a, b) => a + b, 0) + margin * 2;
@@ -205,32 +220,45 @@ test('README: wider or uneven separators still read 123456, and a fivefold separ
       }
       x += w;
     });
-    const region = { start: { x: margin + px[0] / 2, y: 60 }, end: { x: x - px.at(-1) / 2, y: 60 } };
-    return { image: { width, height, data }, region };
+    // Taps moved inwards from the outer edges of the two end bars by the same distance.
+    const tap = inset => ({ start: { x: margin + inset, y: 60 }, end: { x: x - inset, y: 60 } });
+    return { image: { width, height, data }, tap };
   }
-  const raw = 'A123456A', reference = lesson.render(raw), same = draw(raw, () => 1);
+  const same = draw(() => 1);
   assert.deepEqual(same.image, reference.image);
-  assert.deepEqual(same.region, reference.region);
-  const result = factor => { const { image, region } = draw(raw, factor); return reader.read(image, region); };
+  assert.deepEqual(same.tap(narrow / 2), reference.region);
 
-  const wide = 3, alternate = [1, 3], rejected = 5;
-  assert.equal(result(() => wide).text, '123456');
-  assert.equal(result(i => alternate[i % 2]).text, '123456');
-  assert.equal(result(() => rejected).status, 'unreadable');
-  assert.equal(result(i => (i === 3 ? rejected : 1)).status, 'unreadable');
+  // Your image reads between the user's taps: on the outer edges, at the centres or on the inner edges
+  // of the narrow end bars, or one narrow width outside them.
+  const insets = [0, narrow / 2, narrow, -narrow];
+  const result = (factor, inset) => { const { image, tap } = draw(factor); return reader.read(image, tap(inset)); };
+  const widened = 3, alternate = [1, 3], rejected = 5;
+  for (const inset of insets) {
+    assert.equal(result(() => 1, inset).text, '123456', String(inset));
+    assert.equal(result(() => widened, inset).text, '123456', String(inset));
+    assert.equal(result(i => alternate[i % 2], inset).text, '123456', String(inset));
+    assert.equal(result(() => rejected, inset).status, 'unreadable', String(inset));
+    assert.equal(result(i => (i === 3 ? rejected : 1), inset).status, 'unreadable', String(inset));
+  }
 
   for (const phrase of [
-    `区切りの隙間をすべて細い隙間の${wide}倍に広げても、${alternate[0]}倍と${alternate[1]}倍を交互に並べても、`
+    `区切りの隙間をすべて細い隙間の${widened}倍に広げても、${alternate[0]}倍と${alternate[1]}倍を交互に並べても、`
       + '結果は`123456`のままである',
-    `${rejected}倍に広げた隙間は、この読取器では受け付けない`,
+    `${rejected}倍に広げた隙間は、この読取器では受け付けない（サンプルと同じく細い幅${narrow}ピクセル・`
+      + `太い幅${wide}ピクセルで、区切りだけを広げた画像を描けば、「${messages.ja['tab.photo']}」で試せる）`,
     '読取器は7要素ずつ数えて文字を切り出し',
-    `「${messages.ja['tab.photo']}」で試せる`
+    'この切り出し方は、スタートビットのあとの決まった数のビットを1文字として受け取る調歩同期式のシリアル通信（UARTなど）'
+      + 'と同じであることがわかる',
+    'ただし、文字と文字の間の空き時間を問わないUARTと違い、この読取器は区切りの幅に上限を設けている'
   ]) assert.ok(own.ja.includes(phrase), phrase);
   for (const phrase of [
-    `Widening every separator of \`${raw}\` to ${words[wide]} times the narrow space, `
+    `Widening every separator of \`${raw}\` to ${words[widened]} times the narrow space, `
       + `or alternating ${words[alternate[0]]} and ${words[alternate[1]]} times, still reads \`123456\``,
-    `This reader rejects a separator widened to ${words[rejected]} times`,
+    `This reader rejects a separator widened to ${words[rejected]} times (to try it in ${messages.en['tab.photo']}, `
+      + `draw the barcode at the sample's scale, with ${narrow}-pixel narrow and ${wide}-pixel wide elements, `
+      + 'and widen only the separators)',
     'counting seven elements at a time',
-    `to try it in ${messages.en['tab.photo']}`
+    'this way of cutting out characters matches asynchronous (start-stop) serial communication such as UART',
+    'Unlike UART, which accepts any idle time between characters, this reader puts an upper limit on the separator width.'
   ]) assert.ok(own.en.includes(phrase), phrase);
 });
