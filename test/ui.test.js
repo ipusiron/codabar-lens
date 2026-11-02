@@ -90,3 +90,15 @@ test('Every dynamic sample, experiment and quiz label is translated and answerab
     }
   }
 });
+
+test('Training figures take theme colors and keep the white reading images', () => {
+  const css = read('style.css');
+  const lessonSource = read('lesson-core.js');
+  assert.doesNotMatch(app, /(?:fillStyle|strokeStyle)\s*=\s*'#/);
+  for (const name of ['--figure-paper', '--figure-ink', '--figure-select']) assert.match(app, new RegExp(`cssColor\\('${name}'\\)`));
+  const dark = css.slice(css.lastIndexOf('--figure-paper: #ffffff'));
+  assert.match(dark, /prefers-color-scheme: dark[\s\S]*--figure-paper: #(?!fff)[0-9a-f]{6};[\s\S]*--figure-dim: brightness\(/);
+  assert.match(css, /\.training-image canvas \{[^}]*background: var\(--figure-paper\);[^}]*filter: var\(--figure-dim\);/);
+  assert.match(lessonSource, /new Uint8ClampedArray\(width \* height \* 4\)\.fill\(255\)/);
+  assert.match(app, /addEventListener\('change', \(\) => \{\s*paintPhotoResult\(\);\s*repaintSampleFigures\(\);/);
+});
