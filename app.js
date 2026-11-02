@@ -38,6 +38,11 @@
     select.value = String(selected);
   }
 
+  // Figure colors follow the theme from style.css; the reader's input images (lesson.render) keep their white ground.
+  function cssColor(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  }
+
   function paintFrame(id, frame, selected) {
     const canvas = element(id), { image } = frame;
     canvas.width = image.width;
@@ -46,7 +51,7 @@
     context.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
     if (selected !== undefined) {
       const character = frame.described.characters[selected];
-      context.strokeStyle = '#0a58a8';
+      context.strokeStyle = cssColor('--figure-select');
       context.lineWidth = 2;
       context.strokeRect(40 + character.start * 3 - 2, 12, (character.end - character.start) * 3 + 4, 96);
     }
@@ -64,6 +69,26 @@
 
   function sampleOptions() {
     return lesson.samples.map((sample, index) => [index, translate('sample.' + sample.id) + ': ' + sample.raw]);
+  }
+
+  function paintCharacter(c) {
+    const canvas = element('sample-character-canvas');
+    canvas.width = (c.end - c.start) * 12 + 24;
+    canvas.height = 120;
+    const context = canvas.getContext('2d');
+    context.fillStyle = cssColor('--figure-paper'); context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = cssColor('--figure-ink');
+    let x = 12;
+    c.widths.forEach((width, index) => {
+      if (index % 2 === 0) context.fillRect(x, 20, width * 12, 80);
+      x += width * 12;
+    });
+  }
+
+  function repaintSampleFigures() {
+    if (!training.sampleFrame) return;
+    paintFrame('sample-canvas', training.sampleFrame, training.character);
+    paintCharacter(training.sampleFrame.described.characters[training.character]);
   }
 
   function renderSample() {
@@ -85,18 +110,8 @@
     element('sample-character-title').textContent = translate('sample.characterTitle', {
       position: training.character + 1, total: characters.length, symbol: c.symbol
     });
-    const canvas = element('sample-character-canvas');
-    canvas.width = (c.end - c.start) * 12 + 24;
-    canvas.height = 120;
-    canvas.setAttribute('aria-label', translate('sample.characterImage', { symbol: c.symbol }));
-    const context = canvas.getContext('2d');
-    context.fillStyle = '#fff'; context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = '#000';
-    let x = 12;
-    c.widths.forEach((width, index) => {
-      if (index % 2 === 0) context.fillRect(x, 20, width * 12, 80);
-      x += width * 12;
-    });
+    paintCharacter(c);
+    element('sample-character-canvas').setAttribute('aria-label', translate('sample.characterImage', { symbol: c.symbol }));
     element('sample-elements').replaceChildren(...c.widths.map((width, index) => {
       const li = make('li');
       li.append(make('span', translate(index % 2 === 0 ? 'sample.bar' : 'sample.space', { n: Math.floor(index / 2) + 1 })),
@@ -454,7 +469,10 @@
     if (typeof ResizeObserver === 'function') {
       new ResizeObserver(paintPhotoResult).observe(element('photo-result-wrap'));
     } else addEventListener('resize', paintPhotoResult);
-    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', paintPhotoResult);
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      paintPhotoResult();
+      repaintSampleFigures();
+    });
   }
 
   function showTab(name, focus = false) {

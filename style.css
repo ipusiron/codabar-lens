@@ -748,9 +748,35 @@ a {
 
 select { width: 100%; max-width: 100%; padding: 0.5rem; margin-block-end: 0.75rem; }
 .training-image { margin: 1rem 0; }
-.training-image canvas { display: block; width: 100%; height: auto; border: 1px solid var(--border); }
+.training-image canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--border);
+  padding: var(--figure-stand-pad);
+  background: var(--figure-paper);
+  filter: var(--figure-dim);
+}
 .training-image figcaption { color: var(--muted); font-size: 0.875rem; margin-block-start: 0.5rem; }
-.character-canvas { display: block; width: 100%; max-width: 320px; height: auto; border: 1px solid var(--border); }
+.character-canvas { display: block; width: 100%; max-width: 320px; height: auto; border: 1px solid var(--border); filter: var(--figure-dim); }
+/* Figures sit on a paper stand. In the dark theme the stand is a muted paper color and the white reading images are dimmed
+   for display only; their pixels, and the meaning of white and black, stay the same. */
+:root {
+  --figure-paper: #ffffff;
+  --figure-ink: #000000;
+  --figure-select: #0a58a8;
+  --figure-dim: none;
+  --figure-stand-pad: 0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --figure-paper: #ebe4d4;
+    --figure-ink: #1b1f24;
+    --figure-select: #0a58a8;
+    --figure-dim: brightness(0.84);
+    --figure-stand-pad: 8px;
+  }
+}
 .element-widths { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0; list-style: none; gap: 2px; }
 .element-widths li { border: 1px solid var(--border); text-align: center; padding: 0.4rem 0; font-size: 0.875rem; }
 .element-widths span, .element-widths strong { display: block; }
